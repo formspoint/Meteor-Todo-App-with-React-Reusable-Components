@@ -7,7 +7,12 @@ export const Tasks = new Mongo.Collection('tasks');
 if (Meteor.isServer) {
   // This code only runs on the server
   Meteor.publish('tasks', function tasksPublication() {
-    return Tasks.find();
+     return Tasks.find({
+      $or: [
+        { private: { $ne: true } },
+        { owner: this.userId },
+      ],
+    });
   });
 }
 
@@ -29,6 +34,12 @@ Meteor.methods({
   },
   'tasks.remove'(taskId) {
     check(taskId, String);
+
+     const task = Tasks.findOne(taskId);
+    if (task.private && task.owner !== Meteor.userId()) {
+      // If the task is private, make sure only the owner can delete it
+      throw new Meteor.Error('not-authorized');
+    }
  
     Tasks.remove(taskId);
   },
